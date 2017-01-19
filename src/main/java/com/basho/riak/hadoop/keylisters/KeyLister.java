@@ -16,8 +16,8 @@ package com.basho.riak.hadoop.keylisters;
 import java.io.IOException;
 import java.util.Collection;
 
-import com.basho.riak.client.IRiakClient;
-import com.basho.riak.client.RiakException;
+import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.RiakException;
 import com.basho.riak.hadoop.BucketKey;
 
 /**
@@ -57,5 +57,5 @@ public interface KeyLister {
      * @throws {@link IllegalStateException} is init was not called and the
      *         lister is not set up to get keys
      */
-    Collection<BucketKey> getKeys(IRiakClient client) throws RiakException;
+    Collection<BucketKey> getKeys(RiakClient client) throws RiakException;
 }

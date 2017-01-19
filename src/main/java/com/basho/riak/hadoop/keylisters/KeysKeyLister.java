@@ -17,8 +17,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.basho.riak.client.IRiakClient;
-import com.basho.riak.client.RiakException;
+import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.RiakException;
 import com.basho.riak.hadoop.BucketKey;
 
 /**
@@ -104,7 +104,7 @@ public class KeysKeyLister implements KeyLister {
      * com.basho.riak.hadoop.KeyLister#getKeys(com.basho.riak.client.IRiakClient
      * )
      */
-    public Collection<BucketKey> getKeys(IRiakClient client) throws RiakException {
+    public Collection<BucketKey> getKeys(RiakClient client) throws RiakException {
         if (keys == null) {
             throw new IllegalStateException("lister not initialised");
         }

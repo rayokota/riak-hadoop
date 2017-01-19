@@ -14,24 +14,15 @@
 package com.basho.riak.hadoop.config;
 
 import java.io.IOException;
+import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
-import com.basho.riak.client.IRiakClient;
-import com.basho.riak.client.RiakException;
-import com.basho.riak.client.RiakFactory;
-import com.basho.riak.client.raw.RawClient;
-import com.basho.riak.client.raw.config.Configuration;
-import com.basho.riak.client.raw.http.HTTPClientAdapter;
-import com.basho.riak.client.raw.http.HTTPClientConfig;
-import com.basho.riak.client.raw.http.HTTPClusterConfig;
-import com.basho.riak.client.raw.pbc.PBClientAdapter;
-import com.basho.riak.client.raw.pbc.PBClientConfig;
-import com.basho.riak.client.raw.pbc.PBClusterConfig;
+import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.RiakException;
 
 /**
  * Used for generating clients for input/output
- * 
- * Replace with existing RJC factory when {@link RiakLocation}s is swapped for
- * {@link Configuration}
  * 
  * @author russell
  * 
@@ -40,103 +31,35 @@ public final class ClientFactory {
 
     private ClientFactory() {}
 
-    public static IRiakClient getClient(RiakLocation location) throws RiakException {
-        // TODO this should use getRawClient, but DefaultRiakClient's
-        // constructor is wrong visibility
-        // Either change the visibility or add a method to the factory to accept
-        // a delegate (the latter!)
-        IRiakClient client = null;
-        switch (location.getTransport()) {
-        case PB:
-            client = RiakFactory.pbcClient(location.getHost(), location.getPort());
-            break;
-        case HTTP:
-            client = RiakFactory.httpClient(location.asString());
-            break;
-        default:
-            throw new RiakException("Unknown Transport");
+    public static RiakClient getClient(RiakLocation location) throws RiakException {
+        try {
+            RiakClient client = RiakClient.newClient(location.getPort(), location.getHost());
+            return client;
+        } catch (UnknownHostException e) {
+            throw new RiakException(e);
         }
-        return client;
-    }
-
-    public static RawClient getRawClient(RiakLocation location) throws IOException {
-        RawClient client = null;
-        switch (location.getTransport()) {
-        case PB:
-            client = new PBClientAdapter(location.getHost(), location.getPort());
-            break;
-        case HTTP:
-            client = new HTTPClientAdapter(location.asString());
-            break;
-        default:
-            throw new IOException("Unknown Transport");
-        }
-        return client;
     }
 
     /**
      * Generate a cluster client from an array of {@link RiakLocation}s
      * 
-     * @param riakLocatons
+     * @param riakLocations
      * @return
      * @throws IllegalArgumentException
      *             if locations are not all of same {@link RiakTransport}
      */
-    public static IRiakClient clusterClient(RiakLocation[] riakLocatons) throws RiakException {
-        IRiakClient client = null;
-        RiakTransport transport = null;
-
-        if (riakLocatons != null && riakLocatons.length > 0) {
-            transport = riakLocatons[0].getTransport();
+    public static RiakClient clusterClient(RiakLocation[] riakLocations) throws RiakException {
+        if (riakLocations == null || riakLocations.length == 0) {
+            throw new RiakException("No locations");
         }
-
-        if (RiakTransport.PB.equals(transport)) {
-            client = pbClusterClient(riakLocatons);
-        } else if (RiakTransport.HTTP.equals(transport)) {
-            client = httpClusterClient(riakLocatons);
+        try {
+            RiakClient client = RiakClient.newClient(riakLocations[0].getPort(),
+                    Arrays.stream(riakLocations)
+                            .map(riakLocation -> riakLocation.getHost())
+                            .collect(Collectors.toList()).toArray(new String[0]));
+            return client;
+        } catch (UnknownHostException e) {
+            throw new RiakException(e);
         }
-
-        return client;
-    }
-
-    /**
-     * @param riakLocatons
-     * @return a cluster client of HTTP clients
-     */
-    private static IRiakClient httpClusterClient(RiakLocation[] riakLocatons) throws RiakException {
-        HTTPClusterConfig conf = new HTTPClusterConfig(500); // TODO make this config
-
-        for (RiakLocation loc : riakLocatons) {
-            if(!RiakTransport.HTTP.equals(loc.getTransport())) {
-                throw new IllegalArgumentException("Cluster clients must be homogenous");
-            }
-
-            RiakHTTPLocation httpLoc = (RiakHTTPLocation)loc;
-            conf.addClient(new HTTPClientConfig.Builder()
-                .withHost(httpLoc.getHost())
-                .withPort(httpLoc.getPort())
-                .withRiakPath(httpLoc.getRiakPath())
-                .build());
-        }
-        return RiakFactory.newClient(conf);
-    }
-
-    /**
-     * @param riakLocatons
-     * @return a cluster client of PB clients
-     */
-    private static IRiakClient pbClusterClient(RiakLocation[] riakLocatons) throws RiakException {
-        PBClusterConfig conf = new PBClusterConfig(500); // TODO make this config
-        
-        for (RiakLocation loc : riakLocatons) {
-            if(!RiakTransport.PB.equals(loc.getTransport())) {
-                throw new IllegalArgumentException("Cluster clients must be homogenous");
-            }
-            conf.addClient(new PBClientConfig.Builder()
-                .withHost(loc.getHost())
-                .withPort(loc.getPort())
-                .build());
-        }
-        return RiakFactory.newClient(conf);
     }
 }

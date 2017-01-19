@@ -21,19 +21,21 @@ import static org.mockito.Mockito.when;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
+import com.basho.riak.client.api.commands.kv.ListKeys;
+import com.basho.riak.client.core.query.Location;
+import com.basho.riak.client.core.query.Namespace;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import com.basho.riak.client.IRiakClient;
-import com.basho.riak.client.RiakException;
-import com.basho.riak.client.bucket.Bucket;
-import com.basho.riak.client.bucket.FetchBucket;
+import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.RiakException;
 import com.basho.riak.hadoop.BucketKey;
-import com.basho.riak.hadoop.keylisters.BucketKeyLister;
 
 /**
  * @author russell
@@ -43,9 +45,8 @@ public class BucketKeyListerTest {
 
     private static final String BUCKET_NAME = "bucket";
 
-    @Mock private IRiakClient riakClient;
-    @Mock private Bucket bucket;
-    @Mock private FetchBucket fetchBucket;
+    @Mock private RiakClient riakClient;
+    @Mock private ListKeys.Response listKeysResponse;
 
     private BucketKeyLister lister;
 
@@ -55,8 +56,9 @@ public class BucketKeyListerTest {
     @Before public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
         // stub default calls to IRiakClient and FetchBucket
-        when(riakClient.fetchBucket(BUCKET_NAME)).thenReturn(fetchBucket);
-        when(fetchBucket.execute()).thenReturn(bucket);
+        Namespace ns = new Namespace(BUCKET_NAME);
+        ListKeys lk = new ListKeys.Builder(ns).build();
+        when(riakClient.execute(lk)).thenReturn(listKeysResponse);
     }
 
     /**
@@ -103,20 +105,6 @@ public class BucketKeyListerTest {
         testLister(new BucketKeyLister(initString));
     }
 
-    @Test public void exceptionsBubbleUp() throws Exception {
-        final RiakException re = new RiakException();
-        lister = new BucketKeyLister(BUCKET_NAME);
-
-        when(bucket.keys()).thenThrow(re);
-
-        try {
-            lister.getKeys(riakClient);
-            fail("Expected RiakException");
-        } catch (RiakException e) {
-            assertEquals(e, re);
-        }
-    }
-
     @Test public void zeroKeys() throws Exception {
         lister = new BucketKeyLister(BUCKET_NAME);
         testLister(lister, new ArrayList<String>());
@@ -127,7 +115,9 @@ public class BucketKeyListerTest {
     }
 
     private void testLister(BucketKeyLister lister, List<String> expectedKeys) throws Exception {
-        when(bucket.keys()).thenReturn(expectedKeys);
+        Namespace ns = new Namespace(BUCKET_NAME);
+        when(listKeysResponse.iterator()).thenReturn(
+                expectedKeys.stream().map(s -> new Location(ns, s)).collect(Collectors.toList()).iterator());
         Collection<BucketKey> keys = lister.getKeys(riakClient);
         assertEquals("Expected keys to be same length as stubbed mock value", expectedKeys.size(), keys.size());
 

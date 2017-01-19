@@ -14,15 +14,18 @@
 package com.basho.riak.hadoop;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
+import com.basho.riak.client.api.commands.kv.StoreValue;
+import com.basho.riak.client.core.query.Location;
+import com.basho.riak.client.core.query.Namespace;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
-import com.basho.riak.client.IRiakClient;
-import com.basho.riak.client.RiakException;
-import com.basho.riak.client.bucket.Bucket;
+import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.RiakException;
 import com.basho.riak.hadoop.config.ClientFactory;
 import com.basho.riak.hadoop.config.RiakConfig;
 
@@ -35,12 +38,13 @@ import com.basho.riak.hadoop.config.RiakConfig;
  */
 public class RiakRecordWriter<V> extends RecordWriter<Text, V> {
 
-    private final Bucket bucket;
+    private final RiakClient client;
+    private final Namespace ns;
 
     RiakRecordWriter(TaskAttemptContext tac) throws RiakException {
         Configuration conf = tac.getConfiguration();
-        IRiakClient client = ClientFactory.clusterClient(RiakConfig.getRiakLocatons(conf));
-        bucket = client.fetchBucket(RiakConfig.getOutputBucket(conf)).execute();
+        client = ClientFactory.clusterClient(RiakConfig.getRiakLocatons(conf));
+        ns = new Namespace(RiakConfig.getOutputBucket(conf));
     }
 
     /*
@@ -62,8 +66,12 @@ public class RiakRecordWriter<V> extends RecordWriter<Text, V> {
      */
     @Override public void write(Text key, V value) throws IOException, InterruptedException {
         try {
-            bucket.store(key.toString(), value).execute();
-        } catch (RiakException e) {
+            Location location = new Location(ns, key.toString());
+
+            // Store object with default options
+            StoreValue sv = new StoreValue.Builder(value).withLocation(location).build();
+            StoreValue.Response svResponse = client.execute(sv);
+        } catch (ExecutionException e) {
             throw new IOException(e);
         }
     }

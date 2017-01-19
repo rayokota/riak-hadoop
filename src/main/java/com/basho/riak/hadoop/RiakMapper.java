@@ -17,12 +17,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import com.basho.riak.client.api.cap.ConflictResolverFactory;
+import com.basho.riak.client.core.query.Location;
+import com.basho.riak.client.core.query.Namespace;
 import org.apache.hadoop.mapreduce.Mapper;
 
-import com.basho.riak.client.IRiakObject;
-import com.basho.riak.client.cap.ConflictResolver;
-import com.basho.riak.client.convert.Converter;
-import com.basho.riak.client.raw.RiakResponse;
+import com.basho.riak.client.api.cap.ConflictResolver;
+import com.basho.riak.client.api.convert.Converter;
+import com.basho.riak.client.core.query.RiakObject;
 
 /**
  * A Riak specific extension of {@link Mapper} that can be used if you wish to
@@ -38,14 +40,15 @@ import com.basho.riak.client.raw.RiakResponse;
  *            the type for the out value
  * 
  */
-public abstract class RiakMapper<T, OK, OV> extends Mapper<BucketKey, RiakResponse, OK, OV> {
+public abstract class RiakMapper<T, OK, OV> extends Mapper<BucketKey, RiakObject, OK, OV> {
 
+    private final Class<T> cls;
     private final Converter<T> converter;
     private final ConflictResolver<T> resolver;
 
     /**
      * Create a {@link Mapper} that will use the provided {@link Converter} and
-     * {@link ConflictResolver} on the raw {@link RiakResponse} returned by the
+     * {@link ConflictResolver} on the raw {@link RiakObject} returned by the
      * {@link RiakRecordReader}
      * 
      * @param converter
@@ -53,9 +56,13 @@ public abstract class RiakMapper<T, OK, OV> extends Mapper<BucketKey, RiakRespon
      * @param resolver
      *            a {@link ConflictResolver}
      */
-    public RiakMapper(Converter<T> converter, ConflictResolver<T> resolver) {
+    public RiakMapper(Class<T> cls, Converter<T> converter, ConflictResolver<T> resolver) {
+        this.cls = cls;
         this.converter = converter;
         this.resolver = resolver;
+
+        ConflictResolverFactory factory = ConflictResolverFactory.getInstance();
+        factory.registerConflictResolver(cls, resolver);
     }
 
     /*
@@ -64,17 +71,23 @@ public abstract class RiakMapper<T, OK, OV> extends Mapper<BucketKey, RiakRespon
      * @see org.apache.hadoop.mapreduce.Mapper#map(java.lang.Object,
      * java.lang.Object, org.apache.hadoop.mapreduce.Mapper.Context)
      */
-    @Override public void map(BucketKey key, RiakResponse value, Context context) throws IOException,
+    @Override public void map(BucketKey key, RiakObject value, Context context) throws IOException,
             InterruptedException {
 
+        Namespace bucket = new Namespace(key.getBucket());
+        Location location = new Location(bucket, key.getKey());
+        map(key, converter.toDomain(value, location), context);
+
+        /*
         // convert, conflict resolve
         final Collection<T> siblings = new ArrayList<T>(value.numberOfValues());
 
-        for (IRiakObject o : value) {
+        for (RiakObject o : value) {
             siblings.add(converter.toDomain(o));
         }
 
         map(key, resolver.resolve(siblings), context);
+        */
     }
 
     /**

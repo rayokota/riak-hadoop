@@ -26,9 +26,9 @@ import org.apache.hadoop.mapreduce.JobContext;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
-import com.basho.riak.client.IRiakClient;
-import com.basho.riak.client.RiakException;
-import com.basho.riak.client.raw.RiakResponse;
+import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.RiakException;
+import com.basho.riak.client.core.query.RiakObject;
 import com.basho.riak.hadoop.config.NoRiakLocationsException;
 import com.basho.riak.hadoop.config.RiakConfig;
 import com.basho.riak.hadoop.config.RiakLocation;
@@ -40,7 +40,7 @@ import com.basho.riak.hadoop.keylisters.KeyLister;
  * @author russell
  * 
  */
-public class RiakInputFormat extends InputFormat<BucketKey, RiakResponse> {
+public class RiakInputFormat extends InputFormat<BucketKey, RiakObject> {
 
     /**
      * TODO: add this to the configuration.
@@ -50,7 +50,7 @@ public class RiakInputFormat extends InputFormat<BucketKey, RiakResponse> {
     /* (non-Javadoc)
      * @see org.apache.hadoop.mapreduce.InputFormat#createRecordReader(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)
      */
-    @Override public RecordReader<BucketKey, RiakResponse> createRecordReader(InputSplit split,
+    @Override public RecordReader<BucketKey, RiakObject> createRecordReader(InputSplit split,
                                                                               TaskAttemptContext context)
             throws IOException, InterruptedException {
         return new RiakRecordReader();
@@ -90,7 +90,7 @@ public class RiakInputFormat extends InputFormat<BucketKey, RiakResponse> {
             throws RiakException {
         final List<BucketKey> keys = new ArrayList<BucketKey>();
         try {
-            IRiakClient attemptClient = getClient(locations[attemptNumber]);
+            RiakClient attemptClient = getClient(locations[attemptNumber]);
             keys.addAll(keyLister.getKeys(attemptClient));
         } catch (RiakException e) {
             if (attemptNumber >= (locations.length - 1)) {

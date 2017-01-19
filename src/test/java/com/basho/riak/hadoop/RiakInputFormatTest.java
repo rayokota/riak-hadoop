@@ -30,7 +30,6 @@ import org.mockito.MockitoAnnotations;
 
 import com.basho.riak.hadoop.config.NoRiakLocationsException;
 import com.basho.riak.hadoop.config.RiakLocation;
-import com.basho.riak.hadoop.config.RiakPBLocation;
 
 /**
  * @author russell
@@ -81,10 +80,10 @@ public class RiakInputFormatTest {
             bks.add(new BucketKey(BUCKET, KEY + i));
         }
 
-        RiakLocation[] locations = new RiakLocation[] { new RiakPBLocation("host1", 8091),
-                                                       new RiakPBLocation("host2", 8091),
-                                                       new RiakPBLocation("host3", 8091),
-                                                       new RiakPBLocation("host4", 8091) };
+        RiakLocation[] locations = new RiakLocation[] { new RiakLocation("host1", 8091),
+                                                       new RiakLocation("host2", 8091),
+                                                       new RiakLocation("host3", 8091),
+                                                       new RiakLocation("host4", 8091) };
 
         List<InputSplit> splits = RiakInputFormat.getSplits(bks, locations, 999);
 

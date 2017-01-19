@@ -17,9 +17,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import com.basho.riak.client.IRiakClient;
-import com.basho.riak.client.RiakException;
-import com.basho.riak.client.bucket.Bucket;
+import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.RiakException;
+import com.basho.riak.client.api.commands.kv.ListKeys;
+import com.basho.riak.client.core.query.Location;
+import com.basho.riak.client.core.query.Namespace;
 import com.basho.riak.hadoop.BucketKey;
 
 /**
@@ -50,19 +52,24 @@ public class BucketKeyLister implements KeyLister {
      * 
      * @see com.basho.riak.hadoop.KeyLister#getKeys()
      */
-    public Collection<BucketKey> getKeys(IRiakClient client) throws RiakException {
+    public Collection<BucketKey> getKeys(RiakClient client) throws RiakException {
         if (bucket == null || bucket.trim().equals(EMPTY)) {
             throw new IllegalStateException("bucket cannot be null or empty");
         }
 
-        List<BucketKey> keys = new ArrayList<BucketKey>();
-        Bucket b = client.fetchBucket(bucket).execute();
-
-        for (String key : b.keys()) {
-            keys.add(new BucketKey(bucket, key));
-
+        try {
+            Namespace ns = new Namespace(bucket);
+            ListKeys lk = new ListKeys.Builder(ns).build();
+            ListKeys.Response response = client.execute(lk);
+            List<BucketKey> keys = new ArrayList<BucketKey>();
+            for (Location l : response) {
+                String key = l.getKeyAsString();
+                keys.add(new BucketKey(bucket, key));
+            }
+            return keys;
+        } catch (Exception e) {
+            throw new RiakException(e);
         }
-        return keys;
     }
 
     /*

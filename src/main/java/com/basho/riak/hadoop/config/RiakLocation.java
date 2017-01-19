@@ -21,33 +21,22 @@ import java.net.URI;
  * @author russell
  * 
  */
-public abstract class RiakLocation {
+public class RiakLocation {
 
-    private final RiakTransport transport;
     private final String host;
     private final int port;
 
     /**
      * Create a location
      * 
-     * @param transport
-     *            the {@link RiakTransport} for this location
      * @param host
      *            the host
      * @param port
      *            the port
      */
-    protected RiakLocation(RiakTransport transport, String host, int port) {
-        this.transport = transport;
+    public RiakLocation(String host, int port) {
         this.host = host;
         this.port = port;
-    }
-
-    /**
-     * @return the transport
-     */
-    public RiakTransport getTransport() {
-        return transport;
     }
 
     /**
@@ -69,7 +58,9 @@ public abstract class RiakLocation {
      * 
      * @return a string representation that can be used by fromString(String)
      */
-    public abstract String asString();
+    public String asString() {
+        return new StringBuilder(getHost()).append(":").append(getPort()).toString();
+    }
 
     /**
      * De-serialize the location from a String
@@ -80,25 +71,12 @@ public abstract class RiakLocation {
      */
     public static RiakLocation fromString(String location) {
         RiakLocation result = null;
-        if (location.contains("/")) {
-            result = parseHttpLocation(location);
-        } else {
-            String[] pbLoc = location.split(":");
-            if (pbLoc.length != 2) {
-                throw new IllegalArgumentException("Invalid locaton " + location);
-            }
-            result = new RiakPBLocation(pbLoc[0], Integer.parseInt(pbLoc[1]));
+        String[] pbLoc = location.split(":");
+        if (pbLoc.length != 2) {
+            throw new IllegalArgumentException("Invalid locaton " + location);
         }
+        result = new RiakLocation(pbLoc[0], Integer.parseInt(pbLoc[1]));
         return result;
-    }
-
-    /**
-     * @param location
-     * @return
-     */
-    private static RiakLocation parseHttpLocation(String location) {
-        final URI uri = URI.create(location);
-        return new RiakHTTPLocation(uri.getHost(), uri.getPort(), uri.getPath());
     }
 
     /*
@@ -111,7 +89,6 @@ public abstract class RiakLocation {
         int result = 1;
         result = prime * result + ((host == null) ? 0 : host.hashCode());
         result = prime * result + port;
-        result = prime * result + ((transport == null) ? 0 : transport.hashCode());
         return result;
     }
 
@@ -139,9 +116,6 @@ public abstract class RiakLocation {
             return false;
         }
         if (port != other.port) {
-            return false;
-        }
-        if (transport != other.transport) {
             return false;
         }
         return true;

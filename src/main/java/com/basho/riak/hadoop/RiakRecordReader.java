@@ -13,27 +13,31 @@
  */
 package com.basho.riak.hadoop;
 
-import static com.basho.riak.hadoop.config.ClientFactory.getRawClient;
-
 import java.io.IOException;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
 
+import com.basho.riak.client.api.RiakClient;
+import com.basho.riak.client.api.RiakException;
+import com.basho.riak.client.api.commands.kv.FetchValue;
+import com.basho.riak.client.core.query.Location;
+import com.basho.riak.client.core.query.Namespace;
+import com.basho.riak.client.core.query.RiakObject;
+import com.basho.riak.client.core.query.indexes.BigIntIndex;
+import com.basho.riak.hadoop.config.ClientFactory;
 import org.apache.hadoop.mapreduce.InputSplit;
 import org.apache.hadoop.mapreduce.RecordReader;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
-import com.basho.riak.client.raw.RawClient;
-import com.basho.riak.client.raw.RiakResponse;
-
 /**
- * Wrapper around a {@link RawClient} for reading values from Riak
+ * Wrapper around a {@link RiakClient} for reading values from Riak
  * 
  * @author russell
  * 
  */
-public class RiakRecordReader extends RecordReader<BucketKey, RiakResponse> {
+public class RiakRecordReader extends RecordReader<BucketKey, RiakObject> {
 
-    private RawClient client;
+    private RiakClient client;
     private ConcurrentLinkedQueue<BucketKey> keys;
     private long initialSize;
 
@@ -58,9 +62,16 @@ public class RiakRecordReader extends RecordReader<BucketKey, RiakResponse> {
      * 
      * @see org.apache.hadoop.mapreduce.RecordReader#getCurrentValue()
      */
-    @Override public RiakResponse getCurrentValue() throws IOException, InterruptedException {
-        BucketKey key = keys.poll();
-        return client.fetch(key.getBucket(), key.getKey());
+    @Override public RiakObject getCurrentValue() throws IOException, InterruptedException {
+        try {
+            BucketKey key = keys.poll();
+            Namespace bucket = new Namespace(key.getBucket());
+            Location location = new Location(bucket, key.getKey());
+            FetchValue fetchOp = new FetchValue.Builder(location).build();
+            return client.execute(fetchOp).getValue(RiakObject.class);
+        } catch (ExecutionException e) {
+            throw new IOException(e);
+        }
     }
 
     /*
@@ -86,10 +97,14 @@ public class RiakRecordReader extends RecordReader<BucketKey, RiakResponse> {
      */
     @Override public void initialize(InputSplit split, TaskAttemptContext taskAttemptContext) throws IOException,
             InterruptedException {
-        RiakInputSplit inputSplit = (RiakInputSplit) split;
-        keys = new ConcurrentLinkedQueue<BucketKey>(inputSplit.getInputs());
-        initialSize = split.getLength();
-        client = getRawClient(inputSplit.getLocation());
+        try {
+            RiakInputSplit inputSplit = (RiakInputSplit) split;
+            keys = new ConcurrentLinkedQueue<BucketKey>(inputSplit.getInputs());
+            initialSize = split.getLength();
+            client = ClientFactory.getClient(inputSplit.getLocation());
+        } catch (RiakException e) {
+            throw new IOException(e);
+        }
     }
 
     /*

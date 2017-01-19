@@ -22,7 +22,7 @@ import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.hadoop.mapreduce.RecordWriter;
 import org.apache.hadoop.mapreduce.TaskAttemptContext;
 
-import com.basho.riak.client.RiakException;
+import com.basho.riak.client.api.RiakException;
 
 /**
  * Riak specific {@link OutputFormat}, just creates a {@link RiakRecordWriter}

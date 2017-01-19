@@ -38,7 +38,6 @@ public class KeysKeyListerTest {
 
     /**
      * Test method for
-     * {@link com.basho.riak.hadoop.keylisters.KeysKeyLister#KeysKeyLister(java.util.List)}
      * .
      */
     @Test public void createWithKeys() throws Exception {
@@ -50,7 +49,6 @@ public class KeysKeyListerTest {
 
     /**
      * Test method for
-     * {@link com.basho.riak.hadoop.keylisters.KeysKeyLister#KeysKeyLister(java.util.List, java.lang.String)}
      * .
      */
     @Test public void createWithKeysAndCommonBucket() throws Exception {
@@ -67,7 +65,6 @@ public class KeysKeyListerTest {
 
     /**
      * Test method for
-     * {@link com.basho.riak.hadoop.keylisters.KeysKeyLister#KeysKeyLister()}.
      */
     @Test public void noArgConstructorAndNoInitMeansIllegalState() throws Exception {
         lister = new KeysKeyLister();

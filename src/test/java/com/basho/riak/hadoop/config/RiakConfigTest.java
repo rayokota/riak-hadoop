@@ -21,17 +21,9 @@ import java.util.Arrays;
 import org.apache.hadoop.conf.Configuration;
 import org.junit.Test;
 
-import com.basho.riak.client.query.indexes.BinIndex;
-import com.basho.riak.client.raw.query.indexes.BinRangeQuery;
-import com.basho.riak.hadoop.config.RiakConfig;
-import com.basho.riak.hadoop.config.RiakHTTPLocation;
-import com.basho.riak.hadoop.config.RiakLocation;
-import com.basho.riak.hadoop.config.RiakPBLocation;
 import com.basho.riak.hadoop.keylisters.BucketKeyLister;
 import com.basho.riak.hadoop.keylisters.KeyLister;
 import com.basho.riak.hadoop.keylisters.KeysKeyLister;
-import com.basho.riak.hadoop.keylisters.RiakSearchKeyLister;
-import com.basho.riak.hadoop.keylisters.SecondaryIndexesKeyLister;
 
 /**
  * @author russell
@@ -40,39 +32,6 @@ import com.basho.riak.hadoop.keylisters.SecondaryIndexesKeyLister;
 public class RiakConfigTest {
 
     private static final String BUCKET = "bucket";
-
-    /**
-     * Test method for
-     * {@link com.basho.riak.hadoop.config.RiakConfig#addLocation(org.apache.hadoop.conf.Configuration, com.basho.riak.hadoop.config.RiakLocation)}
-     * .
-     */
-    @Test public void testAddRiakLocations() {
-        final String host = "127.0.0.1";
-        final int port = 8097;
-        Configuration conf = new Configuration();
-        conf = RiakConfig.addLocation(conf, new RiakPBLocation(host, port));
-        conf = RiakConfig.addLocation(conf, new RiakHTTPLocation(host, port, "riak"));
-
-        assertEquals("127.0.0.1:8097,http://127.0.0.1:8097/riak", conf.get(RiakConfig.LOCATIONS_PROPERTY));
-    }
-
-    /**
-     * Test method for
-     * {@link com.basho.riak.hadoop.config.RiakConfig#getRiakLocatons(org.apache.hadoop.conf.Configuration)}
-     * .
-     */
-    @Test public void testGetRiakLocatons() {
-        Configuration conf = new Configuration();
-        conf.set(RiakConfig.LOCATIONS_PROPERTY, "127.0.0.1:8097,http://127.0.0.1:8097/riak");
-
-        RiakLocation[] locations = RiakConfig.getRiakLocatons(conf);
-
-        assertEquals(2, locations.length);
-        assertTrue(locations[0] instanceof RiakPBLocation);
-        assertTrue(locations[1] instanceof RiakHTTPLocation);
-        assertEquals("127.0.0.1:8097", locations[0].asString());
-        assertEquals("http://127.0.0.1:8097/riak", locations[1].asString());
-    }
 
     @Test public void setAndGetKeyLister() throws Exception {
         Configuration conf = new Configuration();
@@ -86,16 +45,5 @@ public class RiakConfigTest {
         conf = RiakConfig.setKeyLister(conf, kkl);
         actual = RiakConfig.getKeyLister(conf);
         assertEquals(kkl, actual);
-
-        RiakSearchKeyLister rskl = new RiakSearchKeyLister(BUCKET, "foo:zero");
-        conf = RiakConfig.setKeyLister(conf, rskl);
-        actual = RiakConfig.getKeyLister(conf);
-        assertEquals(rskl, actual);
-
-        SecondaryIndexesKeyLister sikl = new SecondaryIndexesKeyLister(new BinRangeQuery(BinIndex.named("twitter"),
-                                                                                         BUCKET, "from", "to"));
-        conf = RiakConfig.setKeyLister(conf, sikl);
-        actual = RiakConfig.getKeyLister(conf);
-        assertEquals(sikl, actual);
     }
 }
